@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Tracker</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui, sans-serif; background:linear-gradient(135deg,#667eea,#764ba2); min-height:100vh; display:flex; justify-content:center; padding:40px 16px; }
+  .app { background:#fff; width:100%; max-width:480px; border-radius:20px; padding:26px; box-shadow:0 20px 40px rgba(0,0,0,.25); height:fit-content; }
+  h1 { margin-bottom:4px; }
+  .sub { color:#777; font-size:.9rem; margin-bottom:18px; }
+  .add { display:flex; gap:8px; margin-bottom:16px; }
+  .add input { flex:1; padding:12px; border:2px solid #e1e4ea; border-radius:10px; font-size:1rem; }
+  .add input:focus { outline:none; border-color:#667eea; }
+  .add button { padding:0 18px; border:none; border-radius:10px; background:#667eea; color:#fff; font-size:1.4rem; cursor:pointer; }
+  .filters { display:flex; gap:8px; margin-bottom:14px; }
+  .filters button { flex:1; padding:8px; border:none; border-radius:8px; background:#eef0f6; cursor:pointer; font-size:.9rem; }
+  .filters button.active { background:#667eea; color:#fff; }
+  ul { list-style:none; }
+  li { display:flex; align-items:center; gap:10px; padding:12px 6px; border-bottom:1px solid #eee; }
+  li span { flex:1; word-break:break-word; }
+  li.done span { text-decoration:line-through; color:#aaa; }
+  li input { width:20px; height:20px; cursor:pointer; }
+  li .del { border:none; background:none; color:#e5484d; font-size:1.2rem; cursor:pointer; }
+  .foot { display:flex; justify-content:space-between; margin-top:14px; font-size:.9rem; color:#666; }
+  .foot button { border:none; background:none; color:#e5484d; cursor:pointer; }
+  .empty { text-align:center; color:#aaa; padding:24px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>My Tasks</h1>
+  <p class="sub" id="date"></p>
+  <form class="add" id="form">
+    <input id="input" type="text" placeholder="Add a new task..." autocomplete="off">
+    <button type="submit">+</button>
+  </form>
+  <div class="filters">
+    <button data-f="all" class="active">All</button>
+    <button data-f="active">Active</button>
+    <button data-f="done">Done</button>
+  </div>
+  <ul id="list"></ul>
+  <div class="foot"><span id="count"></span><button id="clear">Clear completed</button></div>
+</div>
+
+<script>
+  let tasks = [];
+  let filter = 'all';
+  try { tasks = JSON.parse(localStorage.getItem('tasks')) || []; } catch(e) {}
+
+  const list = document.getElementById('list');
+  document.getElementById('date').textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+
+  function save() { try { localStorage.setItem('tasks', JSON.stringify(tasks)); } catch(e) {} }
+
+  function render() {
+    list.innerHTML = '';
+    const shown = tasks.filter(t => filter === 'all' || (filter === 'done' ? t.done : !t.done));
+    if (!shown.length) list.innerHTML = '<div class="empty">Nothing here yet</div>';
+    shown.forEach(t => {
+      const li = document.createElement('li');
+      if (t.done) li.className = 'done';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = t.done;
+      cb.onchange = () => { t.done = cb.checked; save(); render(); };
+      const span = document.createElement('span');
+      span.textContent = t.text;
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '✕';
+      del.onclick = () => { tasks = tasks.filter(x => x.id !== t.id); save(); render(); };
+      li.append(cb, span, del);
+      list.appendChild(li);
+    });
+    const left = tasks.filter(t => !t.done).length;
+    document.getElementById('count').textContent = left + (left === 1 ? ' task left' : ' tasks left');
+  }
+
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const input = document.getElementById('input');
+    const text = input.value.trim();
+    if (!text) return;
+    tasks.push({ id: Date.now(), text, done:false });
+    input.value = '';
+    save(); render();
+  });
+
+  document.querySelectorAll('.filters button').forEach(b => {
+    b.onclick = () => {
+      filter = b.dataset.f;
+      document.querySelectorAll('.filters button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    };
+  });
+
+  document.getElementById('clear').onclick = () => { tasks = tasks.filter(t => !t.done); save(); render(); };
+
+  render();
+</script>
+</body>
+</html>
